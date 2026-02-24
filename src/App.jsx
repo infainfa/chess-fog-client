@@ -301,11 +301,23 @@ function buildDests(chess, myColor, visibleSquares) {
   const color = myColor === 'white' ? 'w' : 'b';
   if (chess.turn() !== color) return new Map();
   const dests = new Map();
-  chess.moves({ verbose: true }).forEach(m => {
+
+  // HARDCORE FOG OF WAR:
+  // chess.js v1.x підтримує { legal: false } — повертає всі
+  // фізично можливі ходи БЕЗ перевірки шаху.
+  // Гравець не знає що він під шахом і може ходити будь-якою фігурою.
+  const moves = chess.moves({ verbose: true, legal: false });
+
+  moves.forEach(m => {
+    // Беремо тільки ходи наших фігур
+    const piece = chess.get(m.from);
+    if (!piece || piece.color !== color) return;
+    // Тільки з видимих клітинок (fog of war)
     if (!visibleSquares.has(m.from)) return;
     if (!dests.has(m.from)) dests.set(m.from, []);
     dests.get(m.from).push(m.to);
   });
+
   return dests;
 }
 
