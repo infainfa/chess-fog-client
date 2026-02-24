@@ -301,11 +301,33 @@ function buildDests(chess, myColor, visibleSquares) {
   const color = myColor === 'white' ? 'w' : 'b';
   if (chess.turn() !== color) return new Map();
   const dests = new Map();
-  chess.moves({ verbose: true }).forEach(m => {
-    if (!visibleSquares.has(m.from)) return;
-    if (!dests.has(m.from)) dests.set(m.from, []);
-    dests.get(m.from).push(m.to);
-  });
+
+  // HARDCORE FOG: показуємо всі фізично можливі ходи
+  // включно з ходами під шахом — гравець не знає що він під шахом.
+  // Хак: міняємо чергу ходів у FEN — chess.js перестає блокувати
+  // ходи через шах і повертає всі фізичні ходи.
+  const fen = chess.fen();
+  const fenParts = fen.split(' ');
+  fenParts[1] = fenParts[1] === 'w' ? 'b' : 'w';
+  const flippedFen = fenParts.join(' ');
+
+  try {
+    const tempChess = new Chess(flippedFen);
+    tempChess.moves({ verbose: true }).forEach(m => {
+      const piece = chess.get(m.from);
+      if (!piece || piece.color !== color) return;
+      if (!visibleSquares.has(m.from)) return;
+      if (!dests.has(m.from)) dests.set(m.from, []);
+      dests.get(m.from).push(m.to);
+    });
+  } catch {
+    chess.moves({ verbose: true }).forEach(m => {
+      if (!visibleSquares.has(m.from)) return;
+      if (!dests.has(m.from)) dests.set(m.from, []);
+      dests.get(m.from).push(m.to);
+    });
+  }
+
   return dests;
 }
 
