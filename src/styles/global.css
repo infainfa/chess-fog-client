@@ -28,10 +28,47 @@ html, body, #root {
   -webkit-font-smoothing: antialiased;
 }
 
-cg-container { position: relative; }
+cg-container {
+  position: relative;
+  width: 100% !important;
+  height: 100% !important;
+}
 
 cg-board {
   filter: grayscale(1) contrast(0.85) brightness(0.9);
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Координати — всередині дошки */
+cg-container coords {
+  position: absolute;
+  font-size: clamp(9px, 1.5vw, 12px);
+  font-weight: 500;
+  color: rgba(255,255,255,0.5);
+  pointer-events: none;
+}
+
+cg-container coords.ranks {
+  left: 2px;
+  top: 0;
+  bottom: 0;
+  width: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: flex-start;
+}
+
+cg-container coords.files {
+  bottom: 2px;
+  left: 0;
+  right: 0;
+  height: 14px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: flex-end;
 }
 
 .fog-square {

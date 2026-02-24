@@ -26,18 +26,16 @@ export function ChessBoard({
     });
   }, [pieces, turnColor, myColor, dests, lastMove, updateBoard]);
 
+  const size = 'min(92vw, calc(100svh - 240px))';
+
   return (
     <div
       ref={wrapRef}
       style={{
-        // Квадрат: береме менше з ширини і висоти екрану
-        width:        'min(92vw, calc(100svh - 220px))',
-        aspectRatio:  '1 / 1',
-        position:     'relative',
-        borderRadius: '3px',
-        overflow:     'hidden',
-        boxShadow:    '0 8px 40px rgba(0,0,0,0.7)',
-        flexShrink:   0,
+        width:      size,
+        height:     size,
+        position:   'relative',
+        flexShrink: 0,
       }}
     >
       <div
