@@ -13,10 +13,27 @@ const EMPTY_STATE = {
   dests: new Map(), lastMove: null, gameOver: null,
 };
 
+function forceChessMove(chess, from, to, promotion) {
+  // Спробуємо звичайний хід
+  try {
+    const m = chess.move({ from, to, promotion: promotion || 'q' });
+    if (m) return;
+  } catch {}
+  // Форсуємо через FEN flip
+  const fenParts = chess.fen().split(' ');
+  const realTurn = fenParts[1];
+  fenParts[1] = realTurn === 'w' ? 'b' : 'w';
+  try {
+    const temp = new Chess(fenParts.join(' '));
+    const m = temp.move({ from, to, promotion: promotion || 'q' });
+    if (m) chess.load(temp.fen());
+  } catch {}
+}
+
 function rebuildPosition(startFen, moves, k) {
   const chess = new Chess(startFen);
   for (let i = 0; i < k; i++) {
-    chess.move({ from: moves[i].from, to: moves[i].to, promotion: moves[i].promotion || 'q' });
+    forceChessMove(chess, moves[i].from, moves[i].to, moves[i].promotion || 'q');
   }
   return chess;
 }
@@ -119,8 +136,7 @@ export default function App() {
 
       movesRef.current.push({ from: move.from, to: move.to, promotion: 'q' });
 
-      try { chess.move({ from: move.from, to: move.to, promotion: 'q' }); }
-      catch(e) { console.warn('chess.move error:', e.message); return; }
+      forceChessMove(chess, move.from, move.to, 'q');
 
       const myColor  = prev.myColor;
       const board    = chess.board();
