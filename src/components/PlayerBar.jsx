@@ -1,6 +1,6 @@
 import styles from './PlayerBar.module.css';
 
-export function PlayerBar({ color, name = 'Player', rating, isActive, capturedPieces = [] }) {
+export function PlayerBar({ color, name = 'Гравець', rating, isActive, capturedPieces = [] }) {
   return (
     <div className={`${styles.bar} ${isActive ? styles.active : ''}`}>
       <div className={styles.avatar}>
@@ -23,7 +23,7 @@ export function PlayerBar({ color, name = 'Player', rating, isActive, capturedPi
       {isActive && (
         <div className={styles.turnIndicator}>
           <span className={styles.dot} />
-          YOUR TURN
+          ХІД
         </div>
       )}
     </div>

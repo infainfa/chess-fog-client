@@ -1,152 +1,152 @@
-/* ── Root ── */
 .root {
   min-height: 100svh;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  background: var(--bg);
-}
-
-/* ── Logo header — на кожній сторінці ── */
-.header {
-  width: 100%;
-  display: flex;
   justify-content: center;
-  align-items: center;
-  padding: 20px 16px 8px;
-  flex-shrink: 0;
-}
-
-.headerLogo {
-  height: 28px;
-  width: auto;
-  opacity: 0.92;
-  filter: invert(0); /* logo вже білий */
+  padding: 12px;
 }
 
 /* ── Lobby ── */
+
 .lobby {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 28px;
-  padding: 16px;
-  animation: fade-in 0.4s ease;
+  gap: 24px;
+  animation: fade-in 0.3s ease;
 }
 
-.fogPreviewWrap {
-  position: relative;
-  width: min(80vw, 240px);
-  aspect-ratio: 1;
-  border: 1px solid #222;
-  overflow: hidden;
-  border-radius: 4px;
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.logoIcon {
+  font-size: 48px;
+  line-height: 1;
+}
+
+.logoTitle {
+  font-size: clamp(20px, 4vw, 28px);
+  font-weight: 700;
+  color: #e8e6e3;
+  letter-spacing: 0.04em;
+}
+
+.logoBadge {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 10px;
+  background: #3d3929;
+  color: var(--gold);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  border-radius: 20px;
+}
+
+.fogPreview {
+  /* просто обгортка */
 }
 
 .rules {
-  max-width: 300px;
+  max-width: 320px;
   text-align: center;
   color: var(--text-dim);
   font-size: 13px;
-  line-height: 1.8;
+  line-height: 1.7;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
-.rules strong { color: #aaa; font-weight: 500; }
-.rules em     { color: #444; font-style: normal; }
+.rules strong { color: var(--text); }
+.rules em     { color: #888; }
 
 .playBtn {
-  padding: 14px 52px;
-  background: #fff;
-  color: #000;
+  padding: 14px 48px;
+  background: var(--green);
+  color: #fff;
   border: none;
-  border-radius: 2px;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  border-radius: 8px;
+  font-size: 18px;
+  font-weight: 700;
   cursor: pointer;
+  letter-spacing: 0.04em;
   transition: background 0.15s, opacity 0.15s;
 }
 
-.playBtn:hover:not(:disabled) { background: #ddd; }
-.playBtn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-.waitingText {
-  font-size: 13px;
-  color: var(--text-dim);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  animation: pulse 1.5s ease-in-out infinite;
-}
+.playBtn:hover:not(:disabled) { background: var(--green-dark); }
+.playBtn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* ── Game ── */
+
 .game {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 0 12px 12px;
+  gap: 8px;
   animation: fade-in 0.25s ease;
-  width: 100%;
 }
 
 .resignBtn {
-  padding: 6px 18px;
+  padding: 7px 20px;
   background: transparent;
-  color: #444;
-  border: 1px solid #222;
-  border-radius: 2px;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
 }
 
-.resignBtn:hover { border-color: #555; color: #888; }
+.resignBtn:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
 
-/* ── Навігація ── */
+/* ── Навігація по ходах ── */
+
 .controls {
   display: flex;
   align-items: center;
-  gap: 16px;
-  width: min(92vw, calc(100svh - 220px));
+  gap: 12px;
+  width: min(88vw, 75svh, 560px);
   justify-content: center;
   padding: 4px 0;
 }
 
 .navBtn {
-  width: 36px;
-  height: 36px;
-  background: transparent;
-  color: #666;
-  border: 1px solid #222;
-  border-radius: 2px;
-  font-size: 12px;
+  width: 40px;
+  height: 40px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.navBtn:hover:not(:disabled) { color: #aaa; border-color: #444; }
-.navBtn:disabled { opacity: 0.2; cursor: not-allowed; }
+.navBtn:hover:not(:disabled) {
+  background: var(--surface2);
+  border-color: #555;
+}
+
+.navBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
 
 .moveCounter {
-  font-size: 11px;
-  color: #444;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  min-width: 80px;
+  font-size: 13px;
+  color: var(--text-dim);
+  min-width: 100px;
   text-align: center;
   display: flex;
   align-items: center;
@@ -155,14 +155,13 @@
 }
 
 .liveBtn {
-  background: #fff;
-  color: #000;
+  background: var(--green);
+  color: #fff;
   border: none;
-  border-radius: 2px;
-  font-size: 10px;
+  border-radius: 4px;
+  font-size: 11px;
   font-weight: 700;
-  padding: 3px 8px;
+  padding: 2px 8px;
   cursor: pointer;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }

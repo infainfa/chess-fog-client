@@ -7,12 +7,31 @@ import { useSocket }     from './hooks/useSocket.js';
 import { boardToPieces, getVisibleSquares } from './lib/fogEngine.js';
 import styles from './App.module.css';
 
+// ═══════════════════════════════════════════════
+// REPLAY ENGINE (по скрипту chess.com)
+//
+// Зберігаємо:
+//   startFen  — початкова позиція
+//   moves[]   — масив { from, to, promotion } всіх ходів партії
+//   plyIndex  — 0 = до першого ходу, N = після N-го ходу
+//
+// При Prev → rebuild: відновлюємо позицію застосовуючи перші plyIndex ходів
+// При Next → apply move, plyIndex++
+// При Jump(K) → rebuild до K
+//
+// Render:
+//   - Свої фігури: завжди видимі (навіть якщо fog)
+//   - Ворожі фігури: тільки на visible клітинках
+//   - Fog overlay: на невидимих клітинках (крім своїх фігур)
+// ═══════════════════════════════════════════════
+
 const EMPTY_STATE = {
   gameId: null, myColor: null, turnColor: 'white',
-  pieces: null, visibleSquares: null, fogSquares: null,
+  pieces: null, visibleSquares: null,
   dests: new Map(), lastMove: null, gameOver: null,
 };
 
+// Відновлює позицію з нуля застосовуючи перші K ходів
 function rebuildPosition(startFen, moves, k) {
   const chess = new Chess(startFen);
   for (let i = 0; i < k; i++) {
@@ -21,16 +40,25 @@ function rebuildPosition(startFen, moves, k) {
   return chess;
 }
 
+// Будує pieces для chessground з урахуванням fog.
+// Свої фігури — завжди видимі.
+// Ворожі — тільки якщо клітинка в visible.
 function buildPiecesWithFog(board, visibleSquares, myColor) {
   const pieces = new Map();
   const ROLES = { p:'pawn', n:'knight', b:'bishop', r:'rook', q:'queen', k:'king' };
   const myC = myColor === 'white' ? 'w' : 'b';
+
   for (let rank = 0; rank < 8; rank++) {
     for (let file = 0; file < 8; file++) {
       const piece = board[rank]?.[file];
       if (!piece) continue;
+
       const sq = `${'abcdefgh'[file]}${8 - rank}`;
-      if (piece.color === myC || visibleSquares.has(sq)) {
+      const isMine = piece.color === myC;
+
+      // Свої — завжди показуємо
+      // Ворожі — тільки якщо клітинка видима
+      if (isMine || visibleSquares.has(sq)) {
         pieces.set(sq, {
           role:  ROLES[piece.type],
           color: piece.color === 'w' ? 'white' : 'black',
@@ -41,47 +69,53 @@ function buildPiecesWithFog(board, visibleSquares, myColor) {
   return pieces;
 }
 
+// Fog overlay: накриваємо клітинки які НЕ видимі І де немає своїх фігур
 function buildFogSquares(board, visibleSquares, myColor) {
   const myC = myColor === 'white' ? 'w' : 'b';
-  const fog = new Set();
+  const fogSquares = new Set();
+
   for (let rank = 0; rank < 8; rank++) {
     for (let file = 0; file < 8; file++) {
       const sq = `${'abcdefgh'[file]}${8 - rank}`;
-      if (visibleSquares.has(sq)) continue;
+      if (visibleSquares.has(sq)) continue; // видима — не туман
+
       const piece = board[rank]?.[file];
-      if (piece && piece.color === myC) continue;
-      fog.add(sq);
+      if (piece && piece.color === myC) continue; // своя фігура — не накриваємо
+
+      fogSquares.add(sq);
     }
   }
-  return fog;
+  return fogSquares;
 }
 
 export default function App() {
   const [screen, setScreen] = useState('lobby');
   const [game, setGame]     = useState(EMPTY_STATE);
 
+  // Replay state
   const startFenRef  = useRef('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
-  const movesRef     = useRef([]);
+  const movesRef     = useRef([]); // { from, to, promotion } — всі ходи партії
   const [plyIndex, setPlyIndex] = useState(0);
+  const totalPlies   = movesRef.current.length;
+  const isReviewing  = plyIndex < totalPlies && screen !== 'lobby' && screen !== 'waiting';
 
-  const chessRef = useRef(new Chess());
-  const gameRef  = useRef(EMPTY_STATE);
+  // Поточна live позиція (для гри)
+  const chessRef  = useRef(new Chess());
+  const gameRef   = useRef(EMPTY_STATE);
 
-  const history     = movesRef.current;
-  const isLive      = plyIndex === history.length;
-
+  // Replay: обчислити і відрендерити позицію на plyIndex K
   const renderAtPly = useCallback((k, myColor) => {
-    const chess   = rebuildPosition(startFenRef.current, movesRef.current, k);
-    const board   = chess.board();
-    const color   = myColor === 'white' ? 'w' : 'b';
+    const chess = rebuildPosition(startFenRef.current, movesRef.current, k);
+    const board = chess.board();
+    const color = myColor === 'white' ? 'w' : 'b';
     const visible = getVisibleSquares(board, color);
-    return {
-      pieces:         buildPiecesWithFog(board, visible, myColor),
-      visibleSquares: visible,
-      fogSquares:     buildFogSquares(board, visible, myColor),
-      lastMove:       k > 0 ? movesRef.current[k - 1] : null,
-    };
+    const pieces  = buildPiecesWithFog(board, visible, myColor);
+    const fog     = buildFogSquares(board, visible, myColor);
+    const lastMove = k > 0 ? movesRef.current[k - 1] : null;
+    return { pieces, visibleSquares: visible, fogSquares: fog, lastMove };
   }, []);
+
+  // ─── Socket handlers ──────────────────────────────────
 
   const { emit } = useSocket({
     onWaiting() { setScreen('waiting'); },
@@ -93,12 +127,12 @@ export default function App() {
       startFenRef.current = chess.fen();
       setPlyIndex(0);
 
-      const visible = new Set(visibleSquares);
-      const myColor = color;
-      const board   = chess.board();
-      const pieces  = buildPiecesWithFog(board, visible, myColor);
-      const fog     = buildFogSquares(board, visible, myColor);
-      const dests   = buildDests(chess, myColor, visible);
+      const visible  = new Set(visibleSquares);
+      const myColor  = color;
+      const board    = chess.board();
+      const pieces   = buildPiecesWithFog(board, visible, myColor);
+      const fog      = buildFogSquares(board, visible, myColor);
+      const dests    = buildDests(chess, myColor, visible);
 
       const newState = {
         gameId, myColor, turnColor: turn,
@@ -117,10 +151,16 @@ export default function App() {
       const prev    = gameRef.current;
       const visible = new Set(visibleSquares);
 
+      // Зберігаємо хід в масив
       movesRef.current.push({ from: move.from, to: move.to, promotion: 'q' });
 
-      try { chess.move({ from: move.from, to: move.to, promotion: 'q' }); }
-      catch(e) { console.warn('chess.move error:', e.message); return; }
+      // Застосовуємо в chess.js
+      try {
+        chess.move({ from: move.from, to: move.to, promotion: 'q' });
+      } catch(e) {
+        console.warn('chess.move error:', e.message);
+        return;
+      }
 
       const myColor  = prev.myColor;
       const board    = chess.board();
@@ -132,13 +172,15 @@ export default function App() {
         : null;
 
       const newState = {
-        ...prev, turnColor: turn,
+        ...prev,
+        turnColor: turn,
         pieces, visibleSquares: visible, fogSquares: fog,
         dests, lastMove: move, gameOver,
       };
 
       gameRef.current = newState;
       setGame(newState);
+      // Повертаємось до live (кінець history)
       setPlyIndex(movesRef.current.length);
 
       if (isGameOver) setScreen('gameover');
@@ -156,90 +198,108 @@ export default function App() {
 
   const handleMove = useCallback((from, to) => {
     const g = gameRef.current;
-    if (!g.gameId || plyIndex < movesRef.current.length) return;
+    if (!g.gameId) return;
+    // Блокуємо хід якщо переглядаємо (не на останньому ply)
+    if (plyIndex < movesRef.current.length) return;
     emit('make_move', { gameId: g.gameId, from, to });
   }, [emit, plyIndex]);
 
+  // ─── NEXT (по скрипту) ────────────────────────────────
   const goNext = useCallback(() => {
-    if (plyIndex >= movesRef.current.length) return;
-    setPlyIndex(p => p + 1);
+    const moves = movesRef.current;
+    const myColor = gameRef.current.myColor;
+    if (!myColor) return;
+
+    if (plyIndex >= moves.length) return; // вже на кінці
+
+    const newPly = plyIndex + 1;
+    setPlyIndex(newPly);
+
+    if (newPly === moves.length) {
+      // Повернулись до live — показуємо live стан
+      setGame(g => ({ ...g })); // тригер ре-рендеру
+    }
   }, [plyIndex]);
 
+  // ─── PREV через rebuild (по скрипту) ──────────────────
   const goPrev = useCallback(() => {
+    const myColor = gameRef.current.myColor;
+    if (!myColor) return;
     if (plyIndex === 0) return;
     setPlyIndex(p => p - 1);
   }, [plyIndex]);
 
-  const findGame      = useCallback(() => emit('find_game'), [emit]);
+  // ─── JUMP(K) ──────────────────────────────────────────
+  const jumpTo = useCallback((k) => {
+    const moves = movesRef.current;
+    const clamped = Math.max(0, Math.min(k, moves.length));
+    setPlyIndex(clamped);
+  }, []);
+
+  const findGame = useCallback(() => emit('find_game'), [emit]);
   const handleNewGame = useCallback(() => {
     movesRef.current = [];
-    gameRef.current  = EMPTY_STATE;
+    gameRef.current = EMPTY_STATE;
     setPlyIndex(0);
     setGame(EMPTY_STATE);
     setScreen('lobby');
   }, []);
 
+  // ─── Що показуємо ─────────────────────────────────────
   const myColor = game.myColor;
+  const isLive  = plyIndex === movesRef.current.length;
 
-  let displayPieces, displayFog, displayLastMove, displayTurn;
+  // Якщо live — беремо з gameRef (актуальний стан з сервера)
+  // Якщо replay — rebuild на льоту
+  let displayPieces, displayVisible, displayFog, displayLastMove, displayTurn;
+
   if (isLive || !myColor) {
-    displayPieces   = game.pieces;
-    displayFog      = game.fogSquares;
-    displayLastMove = game.lastMove;
-    displayTurn     = game.turnColor;
+    displayPieces    = game.pieces;
+    displayVisible   = game.visibleSquares;
+    displayFog       = game.fogSquares;
+    displayLastMove  = game.lastMove;
+    displayTurn      = game.turnColor;
   } else {
-    const r = renderAtPly(plyIndex, myColor);
-    displayPieces   = r.pieces;
-    displayFog      = r.fogSquares;
-    displayLastMove = r.lastMove;
-    displayTurn     = null;
+    // Rebuild по скрипту
+    const replayState = renderAtPly(plyIndex, myColor);
+    displayPieces    = replayState.pieces;
+    displayVisible   = replayState.visibleSquares;
+    displayFog       = replayState.fogSquares;
+    displayLastMove  = replayState.lastMove;
+    displayTurn      = null; // в replay ходити не можна
   }
 
-  const oppColor   = myColor === 'white' ? 'black' : 'white';
-  const canGoPrev  = plyIndex > 0;
-  const canGoNext  = plyIndex < movesRef.current.length;
-  const moveNum    = isLive ? history.length : plyIndex;
+  const oppColor = myColor === 'white' ? 'black' : 'white';
+  const canGoPrev = plyIndex > 0;
+  const canGoNext = plyIndex < movesRef.current.length;
 
   return (
     <div className={styles.root}>
 
-      {/* ── Logo header — на кожній сторінці ── */}
-      <header className={styles.header}>
-        <img
-          src="/fog-of-chess-logo.png"
-          alt="Fog of Chess"
-          className={styles.headerLogo}
-        />
-      </header>
-
-      {/* ── Lobby ── */}
       {(screen === 'lobby' || screen === 'waiting') && (
         <div className={styles.lobby}>
-          <FogPreview />
-
-          <div className={styles.rules}>
-            <p>You only see squares your pieces <strong>attack</strong>.</p>
-            <p>Check is <em>not announced</em> — you may not know you're in check.</p>
+          <div className={styles.logo}>
+            <span className={styles.logoIcon}>♟</span>
+            <div>
+              <div className={styles.logoTitle}>Fog of War Chess</div>
+              <div className={styles.logoBadge}>HARDCORE</div>
+            </div>
           </div>
-
-          {screen === 'lobby' && (
-            <button className={styles.playBtn} onClick={findGame}>
-              Find Game
-            </button>
-          )}
-
-          {screen === 'waiting' && (
-            <p className={styles.waitingText}>Searching for opponent…</p>
-          )}
+          <FogPreview />
+          <div className={styles.rules}>
+            <p>Ви бачите <strong>тільки</strong> клітинки які атакують ваші фігури.</p>
+            <p>Шах <em>не повідомляється</em> — ви можете не знати що під шахом.</p>
+          </div>
+          <button className={styles.playBtn} onClick={findGame} disabled={screen === 'waiting'}>
+            {screen === 'waiting' ? '⏳ Шукаємо суперника...' : 'Знайти гру'}
+          </button>
         </div>
       )}
 
-      {/* ── Game ── */}
       {(screen === 'playing' || screen === 'gameover') && myColor && (
         <div className={styles.game}>
           <PlayerBar
-            color={oppColor}
-            name="Opponent"
+            color={oppColor} name="Суперник"
             isActive={game.turnColor === oppColor && screen === 'playing' && isLive}
           />
 
@@ -254,23 +314,23 @@ export default function App() {
           />
 
           <PlayerBar
-            color={myColor}
-            name="You"
+            color={myColor} name="Ви"
             isActive={game.turnColor === myColor && screen === 'playing' && isLive}
           />
 
+          {/* Навігація */}
           <div className={styles.controls}>
             <button className={styles.navBtn} onClick={goPrev} disabled={!canGoPrev}>◀</button>
 
             <span className={styles.moveCounter}>
               {!isLive ? (
                 <>
-                  Move {moveNum} / {history.length}
-                  <button className={styles.liveBtn} onClick={() => setPlyIndex(history.length)}>
-                    Live
+                  Хід {plyIndex} / {movesRef.current.length}
+                  <button className={styles.liveBtn} onClick={() => jumpTo(movesRef.current.length)}>
+                    Live ●
                   </button>
                 </>
-              ) : `Move ${history.length}`}
+              ) : `Хід ${movesRef.current.length}`}
             </span>
 
             <button className={styles.navBtn} onClick={goNext} disabled={!canGoNext}>▶</button>
@@ -278,13 +338,12 @@ export default function App() {
 
           {screen === 'playing' && isLive && (
             <button className={styles.resignBtn} onClick={() => emit('resign', { gameId: game.gameId })}>
-              Resign
+              Здатись
             </button>
           )}
         </div>
       )}
 
-      {/* ── Game Over ── */}
       {screen === 'gameover' && game.gameOver && (
         <GameOverModal
           winner={game.gameOver.winner}
@@ -314,29 +373,18 @@ function FogPreview() {
   for (let r = 0; r < 8; r++)
     for (let f = 0; f < 8; f++) {
       const light = (r + f) % 2 === 0;
-      const fog   = r < 4 ? (Math.random() > 0.15) : (Math.random() > 0.75);
+      const fog   = Math.random() > 0.38;
       squares.push(
-        <div key={`${r}${f}`} style={{
-          backgroundColor: light ? '#c8c8c8' : '#888',
-          position: 'relative',
-          filter: 'grayscale(1)',
-        }}>
-          {fog && <div style={{
-            position: 'absolute', inset: 0,
-            background: `rgba(8,8,8,${0.7 + Math.random() * 0.25})`,
-          }}/>}
+        <div key={`${r}${f}`} style={{ backgroundColor: light ? '#f0d9b5' : '#b58863', position: 'relative' }}>
+          {fog && <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(rgba(14,13,11,0.93),rgba(8,8,8,0.97))' }} />}
         </div>
       );
     }
   return (
     <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(8, 1fr)',
-      gridTemplateRows:    'repeat(8, 1fr)',
-      width: 'min(72vw, 220px)',
-      height: 'min(72vw, 220px)',
-      border: '1px solid #222',
-      overflow: 'hidden',
+      display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gridTemplateRows: 'repeat(8, 1fr)',
+      width: '240px', height: '240px', border: '3px solid #4a3a2a',
+      borderRadius: '3px', overflow: 'hidden', opacity: 0.7,
     }}>
       {squares}
     </div>

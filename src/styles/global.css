@@ -1,70 +1,97 @@
-/* Chessground базові стилі */
+/* Chessground базові стилі — обов'язкові */
 @import 'chessground/assets/chessground.base.css';
+
+/* Тема дошки — lichess green */
 @import 'chessground/assets/chessground.brown.css';
+
+/* Фігури — CBurnett (ті самі що на lichess) */
 @import 'chessground/assets/chessground.cburnett.css';
 
+/* ─── Reset ─── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:            #0a0a0a;
-  --surface:       #141414;
-  --surface2:      #1c1c1c;
-  --border:        #2a2a2a;
-  --border-active: #ffffff;
-  --text:          #e8e8e8;
-  --text-dim:      #555;
-  --text-mid:      #888;
-  --green:         #ffffff;
-  --green-dark:    #cccccc;
-  --red:           #888;
-  --fog-color:     rgba(6, 6, 6, 0.91);
+  --bg:          #161512;
+  --surface:     #1f1d1b;
+  --surface2:    #272421;
+  --border:      #2a2825;
+  --border-active: #759900;
+  --text:        #bababa;
+  --text-dim:    #666;
+  --green:       #759900;
+  --green-dark:  #5f7a00;
+  --gold:        #c8a84b;
+  --red:         #b33430;
+
+  /* Fog overlay колір */
+  --fog-color:   rgba(14, 13, 11, 0.93);
 }
 
 html, body, #root {
   height: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: 'SF Pro Display', 'Helvetica Neue', 'Segoe UI', system-ui, sans-serif;
+  font-family: 'Noto Sans', 'Segoe UI', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-cg-container { position: relative; }
+/* ─── Chessground кастомізація ─── */
 
-cg-board {
-  filter: grayscale(1) contrast(0.85) brightness(0.9);
+/* Контейнер дошки */
+cg-container {
+  position: relative;
 }
 
+/* Fog overlay — накладається на клітинки в тумані через data-атрибут */
 .fog-square {
   position: absolute;
   background: var(--fog-color);
   pointer-events: none;
   z-index: 10;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.15s ease;
 }
 
-cg-board square.last-move { background-color: rgba(255,255,255,0.18); }
-cg-board square.selected  { background-color: rgba(255,255,255,0.22); }
+/* Остання позиція — підсвітка */
+cg-board square.last-move {
+  background-color: rgba(155, 199, 0, 0.41);
+}
 
+/* Вибрана фігура */
+cg-board square.selected {
+  background-color: rgba(20, 85, 0, 0.5);
+}
+
+/* Валідні ходи — крапка */
 cg-board square.move-dest {
-  background: radial-gradient(rgba(255,255,255,0.35) 19%, rgba(0,0,0,0) 20%);
+  background: radial-gradient(rgba(20, 85, 0, 0.5) 19%, rgba(0, 0, 0, 0) 20%);
 }
+
+/* Взяття — кільце */
 cg-board square.oc.move-dest {
-  background: radial-gradient(transparent 0%, transparent 79%, rgba(255,255,255,0.3) 80%);
+  background: radial-gradient(
+    transparent 0%,
+    transparent 79%,
+    rgba(20, 85, 0, 0.5) 80%
+  );
 }
 
-::-webkit-scrollbar { width: 4px; }
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--surface); }
-::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
+/* ─── Анімації ─── */
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50%       { opacity: 0.3; }
+  50%       { opacity: 0.35; }
 }
+
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
 @keyframes slide-up {
-  from { opacity: 0; transform: translateY(24px) scale(0.96); }
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
