@@ -1,0 +1,58 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  animation: fade-in 0.2s ease;
+}
+
+.modal {
+  background: var(--surface2);
+  border: 1px solid #4a4542;
+  border-radius: 14px;
+  padding: 40px 52px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  animation: slide-up 0.25s ease;
+  min-width: 260px;
+}
+
+.icon {
+  font-size: 54px;
+  line-height: 1;
+}
+
+.result {
+  font-size: 24px;
+  font-weight: 700;
+  color: #e8e6e3;
+}
+
+.reason {
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+.btn {
+  margin-top: 6px;
+  padding: 12px 36px;
+  background: var(--green);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  transition: background 0.15s;
+}
+
+.btn:hover {
+  background: var(--green-dark);
+}
