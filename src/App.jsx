@@ -390,14 +390,40 @@ function buildDests(chess, myColor, visibleSquares) {
             }
           }
         }
-      } else if (piece.type === 'n' || piece.type === 'k') {
-        // Кінь і король — разові стрибки
-        for (const [df, dr] of DIRS[piece.type]) {
+      } else if (piece.type === 'n') {
+        for (const [df, dr] of DIRS.n) {
           const nf = file + df;
           const nr = rank + dr;
           if (nf < 0 || nf > 7 || nr < 0 || nr > 7) continue;
           const target = chess.get(sq(nf, nr));
           if (!target || target.color !== color) targets.push(sq(nf, nr));
+        }
+      } else if (piece.type === 'k') {
+        // Звичайні ходи короля
+        for (const [df, dr] of DIRS.k) {
+          const nf = file + df;
+          const nr = rank + dr;
+          if (nf < 0 || nf > 7 || nr < 0 || nr > 7) continue;
+          const target = chess.get(sq(nf, nr));
+          if (!target || target.color !== color) targets.push(sq(nf, nr));
+        }
+        // Рокіровка — дозволяємо навіть під шахом
+        const castling = chess.fen().split(' ')[2];
+        const kingRank = color === 'w' ? 0 : 7;
+        if (rank === kingRank && file === 4) {
+          // Коротка (e→g)
+          if (castling.includes(color === 'w' ? 'K' : 'k')
+            && !chess.get(sq(5, kingRank))
+            && !chess.get(sq(6, kingRank))) {
+            targets.push(sq(6, kingRank));
+          }
+          // Довга (e→c)
+          if (castling.includes(color === 'w' ? 'Q' : 'q')
+            && !chess.get(sq(3, kingRank))
+            && !chess.get(sq(2, kingRank))
+            && !chess.get(sq(1, kingRank))) {
+            targets.push(sq(2, kingRank));
+          }
         }
       } else {
         // Тура, слон, ферзь — sliding pieces
