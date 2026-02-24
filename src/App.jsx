@@ -136,14 +136,20 @@ export default function App() {
 
       movesRef.current.push({ from: move.from, to: move.to, promotion: 'q' });
 
-      // Завантажуємо FEN від сервера — найнадійніший спосіб,
-      // клієнт не намагається сам відтворити хід через chess.js
+      console.log('[onMoveMade] received fen from server:', fen);
+      // Завантажуємо FEN від сервера
       if (fen) {
-        try { chess.load(fen); } catch(e) { console.warn('chess.load failed:', e.message); }
+        try {
+          chess.load(fen);
+          console.log('[onMoveMade] loaded fen OK, turn:', chess.turn());
+        } catch(e) {
+          console.warn('[onMoveMade] chess.load failed:', e.message);
+          forceChessMove(chess, move.from, move.to, 'q');
+        }
       } else {
+        console.warn('[onMoveMade] NO FEN from server! using forceChessMove');
         forceChessMove(chess, move.from, move.to, 'q');
       }
-      console.log('[onMoveMade]', move, 'fenAfter:', chess.fen(), 'turn:', chess.turn());
 
       const myColor  = prev.myColor;
       const board    = chess.board();
