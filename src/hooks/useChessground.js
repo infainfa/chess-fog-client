@@ -20,7 +20,7 @@ export function useChessground(containerRef, { onMove }) {
       },
       premovable:  { enabled: false },
       drawable:    { enabled: true },
-      coordinates: true,
+      coordinates: false,
       resizable:   true,
     });
 
