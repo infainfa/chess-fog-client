@@ -134,9 +134,11 @@ export default function App() {
       const prev    = gameRef.current;
       const visible = new Set(visibleSquares);
 
+      console.log('[onMoveMade]', move, 'turn:', turn, 'fenBefore:', chess.fen());
       movesRef.current.push({ from: move.from, to: move.to, promotion: 'q' });
 
       forceChessMove(chess, move.from, move.to, 'q');
+      console.log('[onMoveMade] fenAfter:', chess.fen(), 'chessTurn:', chess.turn());
 
       const myColor  = prev.myColor;
       const board    = chess.board();
