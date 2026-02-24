@@ -300,27 +300,100 @@ export default function App() {
 function buildDests(chess, myColor, visibleSquares) {
   const color = myColor === 'white' ? 'w' : 'b';
   if (chess.turn() !== color) return new Map();
+
+  // Власний генератор ходів без перевірки шаху.
+  // Генеруємо всі фізично можливі ходи для кожної нашої фігури
+  // ігноруючи обмеження "не можна залишати короля під шахом".
   const dests = new Map();
+  const FILES = ['a','b','c','d','e','f','g','h'];
 
-  // HARDCORE FOG OF WAR:
-  // chess.js v1.x підтримує { legal: false } — повертає всі
-  // фізично можливі ходи БЕЗ перевірки шаху.
-  // Гравець не знає що він під шахом і може ходити будь-якою фігурою.
-  const moves = chess.moves({ verbose: true, legal: false });
+  // Напрямки руху для кожного типу фігури
+  const DIRS = {
+    r: [[1,0],[-1,0],[0,1],[0,-1]],
+    b: [[1,1],[1,-1],[-1,1],[-1,-1]],
+    q: [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]],
+    n: [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]],
+    k: [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]],
+  };
 
-  moves.forEach(m => {
-    // Беремо тільки ходи наших фігур
-    const piece = chess.get(m.from);
-    if (!piece || piece.color !== color) return;
-    // Тільки з видимих клітинок (fog of war)
-    if (!visibleSquares.has(m.from)) return;
-    if (!dests.has(m.from)) dests.set(m.from, []);
-    dests.get(m.from).push(m.to);
-  });
+  function sq(f, r) { return FILES[f] + (r + 1); }
+  function coords(square) {
+    return [FILES.indexOf(square[0]), parseInt(square[1]) - 1];
+  }
+
+  for (let rank = 0; rank < 8; rank++) {
+    for (let file = 0; file < 8; file++) {
+      const square = sq(file, rank);
+      const piece  = chess.get(square);
+      if (!piece || piece.color !== color) continue;
+      if (!visibleSquares.has(square)) continue;
+
+      const targets = [];
+
+      if (piece.type === 'p') {
+        // Пішак — своя логіка
+        const dir   = color === 'w' ? 1 : -1;
+        const start = color === 'w' ? 1 : 6;
+
+        // Хід вперед
+        const r1 = rank + dir;
+        if (r1 >= 0 && r1 < 8) {
+          const fwd = sq(file, r1);
+          if (!chess.get(fwd)) {
+            targets.push(fwd);
+            // Подвійний хід з початкової позиції
+            if (rank === start) {
+              const r2  = rank + dir * 2;
+              const fwd2 = sq(file, r2);
+              if (!chess.get(fwd2)) targets.push(fwd2);
+            }
+          }
+          // Взяття по діагоналі
+          for (const df of [-1, 1]) {
+            const ff = file + df;
+            if (ff >= 0 && ff < 8) {
+              const diag = sq(ff, r1);
+              const target = chess.get(diag);
+              if (target && target.color !== color) targets.push(diag);
+              // En passant (спрощено)
+              const ep = chess.fen().split(' ')[3];
+              if (ep && ep !== '-' && ep === diag) targets.push(diag);
+            }
+          }
+        }
+      } else if (piece.type === 'n' || piece.type === 'k') {
+        // Кінь і король — разові стрибки
+        for (const [df, dr] of DIRS[piece.type]) {
+          const nf = file + df;
+          const nr = rank + dr;
+          if (nf < 0 || nf > 7 || nr < 0 || nr > 7) continue;
+          const target = chess.get(sq(nf, nr));
+          if (!target || target.color !== color) targets.push(sq(nf, nr));
+        }
+      } else {
+        // Тура, слон, ферзь — sliding pieces
+        for (const [df, dr] of DIRS[piece.type]) {
+          let nf = file + df;
+          let nr = rank + dr;
+          while (nf >= 0 && nf <= 7 && nr >= 0 && nr <= 7) {
+            const target = chess.get(sq(nf, nr));
+            if (target) {
+              if (target.color !== color) targets.push(sq(nf, nr));
+              break; // заблоковано
+            }
+            targets.push(sq(nf, nr));
+            nf += df;
+            nr += dr;
+          }
+        }
+      }
+
+      if (targets.length > 0) dests.set(square, targets);
+    }
+  }
 
   return dests;
 }
-
 function FogPreview() {
   const squares = [];
   for (let r = 0; r < 8; r++)
