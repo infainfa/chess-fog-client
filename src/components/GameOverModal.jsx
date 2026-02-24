@@ -1,30 +1,27 @@
 import styles from './GameOverModal.module.css';
 
 const REASON_LABELS = {
-  checkmate:  'Мат',
-  resign:     'Здача',
-  disconnect: 'Суперник відключився',
-  stalemate:  'Пат — нічия',
-  timeout:    'Час вичерпано',
+  checkmate:  'Checkmate',
+  resign:     'Resignation',
+  disconnect: 'Opponent disconnected',
+  stalemate:  'Stalemate — Draw',
+  timeout:    'Time out',
+  unknown:    'Game over',
 };
 
 export function GameOverModal({ winner, reason, myColor, onNewGame }) {
-  const iWon = winner === myColor;
+  const iWon  = winner === myColor;
   const isDraw = !winner;
 
   return (
     <div className={styles.backdrop}>
       <div className={styles.modal}>
         <div className={styles.icon}>
-          {isDraw ? '🤝' : iWon ? '♛' : '♙'}
+          {isDraw ? '🤝' : iWon ? '♛' : '♟'}
         </div>
 
         <div className={styles.result}>
-          {isDraw
-            ? 'Нічия!'
-            : iWon
-            ? 'Ви перемогли!'
-            : 'Ви програли'}
+          {isDraw ? 'Draw' : iWon ? 'You Won' : 'You Lost'}
         </div>
 
         <div className={styles.reason}>
@@ -32,7 +29,7 @@ export function GameOverModal({ winner, reason, myColor, onNewGame }) {
         </div>
 
         <button className={styles.btn} onClick={onNewGame}>
-          Нова гра
+          New Game
         </button>
       </div>
     </div>
