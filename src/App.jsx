@@ -247,11 +247,11 @@ export default function App() {
           <FogPreview />
 
           <div className={styles.rules}>
-            <p>You only see squares your pieces attack.</p>
-            <p>Enemy pieces are visible only within your vision.</p>
-            <p>Check is not announced.</p>
-            <p>👑 The game ends when the king is captured.</p>
-            <p>Have fun</p>
+            <p>you only see squares your pieces attack.</p>
+            <p>enemy pieces are visible only within your vision.</p>
+            <p>check is not announced.</p>
+            <p>👑 the game ends when the king is captured.</p>
+            <p>have fun</p>
             <PawnRules />
           </div>
 
