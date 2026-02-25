@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { Chess } from 'chess.js';
 import { ChessBoard }    from './components/ChessBoard.jsx';
 import { PlayerBar }     from './components/PlayerBar.jsx';
@@ -247,8 +247,12 @@ export default function App() {
           <FogPreview />
 
           <div className={styles.rules}>
-            <p>You only see squares your pieces <strong>attack</strong>.</p>
-            <p>Check is <em>not announced</em> — you may not know you're in check.</p>
+            <p>You only see squares your pieces attack.</p>
+            <p>Enemy pieces are visible only within your vision.</p>
+            <p>Check is not announced.</p>
+            <p>👑 The game ends when the king is captured.</p>
+            <p>Have fun</p>
+            <PawnRules />
           </div>
 
           {screen === 'lobby' && (
@@ -449,6 +453,45 @@ function buildDests(chess, myColor, visibleSquares) {
 
   return dests;
 }
+function PawnRules() {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div style={{ marginTop: '8px' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          background:  'none',
+          border:      'none',
+          color:       'rgba(255,255,255,0.5)',
+          cursor:      'pointer',
+          fontSize:    '11px',
+          letterSpacing: '0.05em',
+          padding:     '0',
+          textDecoration: 'underline',
+          textUnderlineOffset: '3px',
+        }}
+      >
+        {open ? '▾' : '▸'} ♟️ pawn visibility rules
+      </button>
+      {open && (
+        <div style={{
+          marginTop:  '8px',
+          color:      'rgba(255,255,255,0.45)',
+          fontSize:   '11px',
+          lineHeight: '1.7',
+          textAlign:  'left',
+        }}>
+          <p style={{margin:'2px 0'}}>a pawn sees one square forward if empty, and</p>
+          <p style={{margin:'2px 0'}}>two from its starting square if both are empty.</p>
+          <p style={{margin:'2px 0'}}>if blocked, it cannot move or see beyond.</p>
+          <p style={{margin:'2px 0'}}>it only sees diagonally when an enemy piece is there (and can capture it).</p>
+          <p style={{margin:'2px 0'}}>all standard chess rules apply.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FogPreview() {
   const squares = [];
   for (let r = 0; r < 8; r++)
