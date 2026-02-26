@@ -4,37 +4,36 @@
   gap: 8px;
   width: min(92vw, calc(100svh - 240px));
   padding: 6px 10px;
-  border: 1px solid #1a1a1a;
   border-radius: 2px;
-  background: #0a0a0a;
+  background: #b0b0b0;
   min-height: 40px;
-  transition: border-color 0.2s;
+  transition: background 0.2s;
 }
 
 .bar.active {
-  border-color: #333;
+  background: #b8b8b8;
 }
 
 .left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
 .avatar {
   font-size: 14px;
-  color: #444;
+  color: #333;
   width: 20px;
   text-align: center;
 }
 
 .name {
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #555;
+  color: #222;
   white-space: nowrap;
 }
 
@@ -43,30 +42,28 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 1px;
-  min-height: 20px;
-  padding: 0 4px;
+  gap: 0px;
+  min-height: 26px;
+  padding: 0 2px;
 }
 
-.capturedPiece {
-  font-size: 14px;
-  line-height: 1;
-  opacity: 0.7;
-}
-
-.capturedEmpty {
-  display: block;
-  height: 20px;
+/* Фігура через ті самі CSS класи що й chessground */
+.pieceMini {
+  width: 26px;
+  height: 26px;
+  background-size: cover;
+  background-repeat: no-repeat;
+  flex-shrink: 0;
 }
 
 .turnIndicator {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #111;
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -75,7 +72,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #fff;
+  background: #111;
   animation: pulse 1.2s ease-in-out infinite;
 }
 

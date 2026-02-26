@@ -1,5 +1,15 @@
 import styles from './PlayerBar.module.css';
 
+const TYPE_MAP = {
+  p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king'
+};
+
+function PieceMini({ type, color }) {
+  const role  = TYPE_MAP[type] || type;
+  const clr   = color === 'w' ? 'white' : 'black';
+  return <div className={`${styles.pieceMini} ${clr} ${role}`} />;
+}
+
 export function PlayerBar({ color, name = 'Player', isActive, capturedPieces = [] }) {
   return (
     <div className={`${styles.bar} ${isActive ? styles.active : ''}`}>
@@ -12,13 +22,7 @@ export function PlayerBar({ color, name = 'Player', isActive, capturedPieces = [
 
       <div className={styles.captured}>
         {capturedPieces.map((p, i) => (
-          <span
-            key={i}
-            className={styles.capturedPiece}
-            style={{ color: p.color === 'w' ? '#e8e8e8' : '#222' }}
-          >
-            {p.char}
-          </span>
+          <PieceMini key={i} type={p.type} color={p.color} />
         ))}
       </div>
 
