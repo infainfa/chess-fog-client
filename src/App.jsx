@@ -2,10 +2,14 @@ import React, { useState, useCallback, useRef } from 'react';
 import { Chess } from 'chess.js';
 import { ChessBoard }    from './components/ChessBoard.jsx';
 import { PlayerBar }     from './components/PlayerBar.jsx';
-import { GameOverModal } from './components/GameOverModal.jsx';
 import { useSocket }     from './hooks/useSocket.js';
-import { boardToPieces, getVisibleSquares } from './lib/fogEngine.js';
+import { getVisibleSquares } from './lib/fogEngine.js';
 import styles from './App.module.css';
+
+const PIECE_SYMBOLS = {
+  w: { p:'♙', n:'♘', b:'♗', r:'♖', q:'♕', k:'♔' },
+  b: { p:'♟', n:'♞', b:'♝', r:'♜', q:'♛', k:'♚' },
+};
 
 const EMPTY_STATE = {
   gameId: null, myColor: null, turnColor: 'white',
@@ -13,13 +17,26 @@ const EMPTY_STATE = {
   dests: new Map(), lastMove: null, gameOver: null,
 };
 
+function computeCaptured(moves) {
+  const chess = new Chess();
+  const captured = { w: [], b: [] };
+  for (const m of moves) {
+    try {
+      const move = chess.move({ from: m.from, to: m.to, promotion: m.promotion || 'q' });
+      if (move?.captured) {
+        const owner = move.color === 'w' ? 'b' : 'w';
+        captured[owner].push(move.captured);
+      }
+    } catch {}
+  }
+  return captured;
+}
+
 function forceChessMove(chess, from, to, promotion) {
-  // Спробуємо звичайний хід
   try {
     const m = chess.move({ from, to, promotion: promotion || 'q' });
     if (m) return;
   } catch {}
-  // Форсуємо через FEN flip
   const fenParts = chess.fen().split(' ');
   const realTurn = fenParts[1];
   fenParts[1] = realTurn === 'w' ? 'b' : 'w';
@@ -38,7 +55,7 @@ function rebuildPosition(startFen, moves, k) {
   return chess;
 }
 
-function buildPiecesWithFog(board, visibleSquares, myColor) {
+function buildPiecesWithFog(board, visibleSquares, myColor, noFog = false) {
   const pieces = new Map();
   const ROLES = { p:'pawn', n:'knight', b:'bishop', r:'rook', q:'queen', k:'king' };
   const myC = myColor === 'white' ? 'w' : 'b';
@@ -47,7 +64,7 @@ function buildPiecesWithFog(board, visibleSquares, myColor) {
       const piece = board[rank]?.[file];
       if (!piece) continue;
       const sq = `${'abcdefgh'[file]}${8 - rank}`;
-      if (piece.color === myC || visibleSquares.has(sq)) {
+      if (noFog || piece.color === myC || visibleSquares.has(sq)) {
         pieces.set(sq, {
           role:  ROLES[piece.type],
           color: piece.color === 'w' ? 'white' : 'black',
@@ -58,7 +75,8 @@ function buildPiecesWithFog(board, visibleSquares, myColor) {
   return pieces;
 }
 
-function buildFogSquares(board, visibleSquares, myColor) {
+function buildFogSquares(board, visibleSquares, myColor, noFog = false) {
+  if (noFog) return new Set();
   const myC = myColor === 'white' ? 'w' : 'b';
   const fog = new Set();
   for (let rank = 0; rank < 8; rank++) {
@@ -76,27 +94,29 @@ function buildFogSquares(board, visibleSquares, myColor) {
 export default function App() {
   const [screen, setScreen] = useState('lobby');
   const [game, setGame]     = useState(EMPTY_STATE);
+  const [fogEnabled, setFogEnabled] = useState(true);
+  const [flipped, setFlipped]       = useState(false);
 
-  const startFenRef  = useRef('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
-  const movesRef     = useRef([]);
+  const startFenRef = useRef('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+  const movesRef    = useRef([]);
   const [plyIndex, setPlyIndex] = useState(0);
 
   const chessRef = useRef(new Chess());
   const gameRef  = useRef(EMPTY_STATE);
 
-  const history     = movesRef.current;
-  const isLive      = plyIndex === history.length;
+  const history = movesRef.current;
+  const isLive  = plyIndex === history.length;
 
-  const renderAtPly = useCallback((k, myColor) => {
+  const renderAtPly = useCallback((k, myColor, noFog, viewColor) => {
     const chess   = rebuildPosition(startFenRef.current, movesRef.current, k);
     const board   = chess.board();
-    const color   = myColor === 'white' ? 'w' : 'b';
+    const fogColor = noFog ? viewColor : myColor;
+    const color   = fogColor === 'white' ? 'w' : 'b';
     const visible = getVisibleSquares(board, color);
     return {
-      pieces:         buildPiecesWithFog(board, visible, myColor),
-      visibleSquares: visible,
-      fogSquares:     buildFogSquares(board, visible, myColor),
-      lastMove:       k > 0 ? movesRef.current[k - 1] : null,
+      pieces:     buildPiecesWithFog(board, visible, viewColor, noFog),
+      fogSquares: buildFogSquares(board, visible, fogColor, noFog),
+      lastMove:   k > 0 ? movesRef.current[k - 1] : null,
     };
   }, []);
 
@@ -109,6 +129,8 @@ export default function App() {
       movesRef.current = [];
       startFenRef.current = chess.fen();
       setPlyIndex(0);
+      setFogEnabled(true);
+      setFlipped(false);
 
       const visible = new Set(visibleSquares);
       const myColor = color;
@@ -123,7 +145,6 @@ export default function App() {
         dests: turn === myColor ? dests : new Map(),
         lastMove: null, gameOver: null,
       };
-
       gameRef.current = newState;
       setGame(newState);
       setScreen('playing');
@@ -136,18 +157,9 @@ export default function App() {
 
       movesRef.current.push({ from: move.from, to: move.to, promotion: 'q' });
 
-      console.log('[onMoveMade] received fen from server:', fen);
-      // Завантажуємо FEN від сервера
       if (fen) {
-        try {
-          chess.load(fen);
-          console.log('[onMoveMade] loaded fen OK, turn:', chess.turn());
-        } catch(e) {
-          console.warn('[onMoveMade] chess.load failed:', e.message);
-          forceChessMove(chess, move.from, move.to, 'q');
-        }
+        try { chess.load(fen); } catch { forceChessMove(chess, move.from, move.to, 'q'); }
       } else {
-        console.warn('[onMoveMade] NO FEN from server! using forceChessMove');
         forceChessMove(chess, move.from, move.to, 'q');
       }
 
@@ -160,16 +172,10 @@ export default function App() {
         ? { winner, reason: isCheckmate ? 'checkmate' : isStalemate ? 'stalemate' : 'unknown' }
         : null;
 
-      const newState = {
-        ...prev, turnColor: turn,
-        pieces, visibleSquares: visible, fogSquares: fog,
-        dests, lastMove: move, gameOver,
-      };
-
+      const newState = { ...prev, turnColor: turn, pieces, visibleSquares: visible, fogSquares: fog, dests, lastMove: move, gameOver };
       gameRef.current = newState;
       setGame(newState);
       setPlyIndex(movesRef.current.length);
-
       if (isGameOver) setScreen('gameover');
     },
 
@@ -189,142 +195,155 @@ export default function App() {
     emit('make_move', { gameId: g.gameId, from, to });
   }, [emit, plyIndex]);
 
-  const goNext = useCallback(() => {
-    if (plyIndex >= movesRef.current.length) return;
-    setPlyIndex(p => p + 1);
-  }, [plyIndex]);
-
-  const goPrev = useCallback(() => {
-    if (plyIndex === 0) return;
-    setPlyIndex(p => p - 1);
-  }, [plyIndex]);
+  const goNext = useCallback(() => { if (plyIndex < movesRef.current.length) setPlyIndex(p => p + 1); }, [plyIndex]);
+  const goPrev = useCallback(() => { if (plyIndex > 0) setPlyIndex(p => p - 1); }, [plyIndex]);
 
   const findGame      = useCallback(() => emit('find_game'), [emit]);
   const handleNewGame = useCallback(() => {
     movesRef.current = [];
     gameRef.current  = EMPTY_STATE;
     setPlyIndex(0);
+    setFogEnabled(true);
+    setFlipped(false);
     setGame(EMPTY_STATE);
     setScreen('lobby');
   }, []);
 
-  const myColor = game.myColor;
+  const myColor  = game.myColor;
+  const oppColor = myColor === 'white' ? 'black' : 'white';
+  const myC      = myColor === 'white' ? 'w' : 'b';
+  const oppC     = myColor === 'white' ? 'b' : 'w';
+
+  const captured    = myColor ? computeCaptured(movesRef.current) : { w: [], b: [] };
+  const oppCaptured = captured[oppC].map(t => PIECE_SYMBOLS[oppC][t]);
+  const myCaptured  = captured[myC].map(t => PIECE_SYMBOLS[myC][t]);
+
+  const noFog     = !fogEnabled;
+  const viewColor = flipped ? oppColor : myColor;
+  const isGameOver = screen === 'gameover';
 
   let displayPieces, displayFog, displayLastMove, displayTurn;
-  if (isLive || !myColor) {
-    displayPieces   = game.pieces;
-    displayFog      = game.fogSquares;
-    displayLastMove = game.lastMove;
-    displayTurn     = game.turnColor;
-  } else {
-    const r = renderAtPly(plyIndex, myColor);
-    displayPieces   = r.pieces;
-    displayFog      = r.fogSquares;
-    displayLastMove = r.lastMove;
-    displayTurn     = null;
+  if (myColor) {
+    if (isLive && screen === 'playing') {
+      const board   = chessRef.current.board();
+      const visible = game.visibleSquares || new Set();
+      displayPieces   = buildPiecesWithFog(board, visible, viewColor || 'white', noFog);
+      displayFog      = buildFogSquares(board, visible, noFog ? (viewColor || 'white') : myColor, noFog);
+      displayLastMove = game.lastMove;
+      displayTurn     = game.turnColor;
+    } else {
+      const r = renderAtPly(plyIndex, myColor, noFog, viewColor || 'white');
+      displayPieces   = r.pieces;
+      displayFog      = r.fogSquares;
+      displayLastMove = r.lastMove;
+      displayTurn     = null;
+    }
   }
 
-  const oppColor   = myColor === 'white' ? 'black' : 'white';
-  const canGoPrev  = plyIndex > 0;
-  const canGoNext  = plyIndex < movesRef.current.length;
-  const moveNum    = isLive ? history.length : plyIndex;
+  const canGoPrev = plyIndex > 0;
+  const canGoNext = plyIndex < movesRef.current.length;
+  const moveNum   = isLive ? history.length : plyIndex;
 
   return (
     <div className={styles.root}>
-
-      {/* ── Logo header — на кожній сторінці ── */}
       <header className={styles.header}>
-        <img
-          src="/fog-of-chess-logo.png"
-          alt="Fog of Chess"
-          className={styles.headerLogo}
-        />
+        <img src="/fog-of-chess-logo.png" alt="Fog of Chess" className={styles.headerLogo} />
       </header>
 
-      {/* ── Lobby ── */}
+      {/* Lobby */}
       {(screen === 'lobby' || screen === 'waiting') && (
         <div className={styles.lobby}>
           <FogPreview />
-
           <div className={styles.rules}>
-            <p>you only see squares your pieces attack.</p>
-            <p>enemy pieces are visible only within your vision.</p>
-            <p>check is not announced.</p>
-            <p>👑 the game ends when the king is captured.</p>
-            <p>have fun</p>
+            <p>You only see squares your pieces attack.</p>
+            <p>Enemy pieces are visible only within your vision.</p>
+            <p>Check is not announced.</p>
+            <p>👑 The game ends when the king is captured.</p>
+            <p>Have fun</p>
             <PawnRules />
           </div>
-
           {screen === 'lobby' && (
-            <button className={styles.playBtn} onClick={findGame}>
-              Find Game
-            </button>
+            <button className={styles.playBtn} onClick={findGame}>Find Game</button>
           )}
-
           {screen === 'waiting' && (
             <p className={styles.waitingText}>Searching for opponent…</p>
           )}
         </div>
       )}
 
-      {/* ── Game ── */}
+      {/* Game */}
       {(screen === 'playing' || screen === 'gameover') && myColor && (
         <div className={styles.game}>
+
           <PlayerBar
-            color={oppColor}
+            color={flipped ? myColor : oppColor}
             name="Opponent"
             isActive={game.turnColor === oppColor && screen === 'playing' && isLive}
+            capturedPieces={oppCaptured}
           />
 
           <ChessBoard
             pieces={displayPieces}
             visibleSquares={displayFog}
-            myColor={myColor}
-            turnColor={isLive ? game.turnColor : null}
-            dests={isLive ? game.dests : new Map()}
+            myColor={viewColor || 'white'}
+            turnColor={isLive && !isGameOver ? game.turnColor : null}
+            dests={isLive && !isGameOver ? game.dests : new Map()}
             lastMove={displayLastMove}
             onMove={handleMove}
           />
 
           <PlayerBar
-            color={myColor}
+            color={flipped ? oppColor : myColor}
             name="You"
             isActive={game.turnColor === myColor && screen === 'playing' && isLive}
+            capturedPieces={myCaptured}
           />
 
+          {/* Navigation */}
           <div className={styles.controls}>
             <button className={styles.navBtn} onClick={goPrev} disabled={!canGoPrev}>◀</button>
-
             <span className={styles.moveCounter}>
               {!isLive ? (
                 <>
                   Move {moveNum} / {history.length}
-                  <button className={styles.liveBtn} onClick={() => setPlyIndex(history.length)}>
-                    Live
-                  </button>
+                  <button className={styles.liveBtn} onClick={() => setPlyIndex(history.length)}>Live</button>
                 </>
               ) : `Move ${history.length}`}
             </span>
-
             <button className={styles.navBtn} onClick={goNext} disabled={!canGoNext}>▶</button>
           </div>
 
+          {/* Post-game actions */}
+          {isGameOver && (
+            <div className={styles.postGame}>
+              <div className={styles.gameResult}>
+                {game.gameOver?.winner === myColor ? '👑 You Won' :
+                 game.gameOver?.winner ? 'You Lost' : 'Draw'}
+              </div>
+              <div className={styles.postGameBtns}>
+                <button
+                  className={noFog ? styles.dispelBtnActive : styles.dispelBtn}
+                  onClick={() => setFogEnabled(f => !f)}
+                >
+                  {fogEnabled ? '☁️ Dispel the Fog' : '🌫️ Restore Fog'}
+                </button>
+                <button className={styles.flipBtn} onClick={() => setFlipped(f => !f)}>
+                  ⇅ Flip Board
+                </button>
+                <button className={styles.newGameBtn} onClick={handleNewGame}>
+                  New Game
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Resign */}
           {screen === 'playing' && isLive && (
             <button className={styles.resignBtn} onClick={() => emit('resign', { gameId: game.gameId })}>
               Resign
             </button>
           )}
         </div>
-      )}
-
-      {/* ── Game Over ── */}
-      {screen === 'gameover' && game.gameOver && (
-        <GameOverModal
-          winner={game.gameOver.winner}
-          reason={game.gameOver.reason}
-          myColor={myColor}
-          onNewGame={handleNewGame}
-        />
       )}
     </div>
   );
@@ -333,14 +352,8 @@ export default function App() {
 function buildDests(chess, myColor, visibleSquares) {
   const color = myColor === 'white' ? 'w' : 'b';
   if (chess.turn() !== color) return new Map();
-
-  // Власний генератор ходів без перевірки шаху.
-  // Генеруємо всі фізично можливі ходи для кожної нашої фігури
-  // ігноруючи обмеження "не можна залишати короля під шахом".
   const dests = new Map();
   const FILES = ['a','b','c','d','e','f','g','h'];
-
-  // Напрямки руху для кожного типу фігури
   const DIRS = {
     r: [[1,0],[-1,0],[0,1],[0,-1]],
     b: [[1,1],[1,-1],[-1,1],[-1,-1]],
@@ -348,11 +361,7 @@ function buildDests(chess, myColor, visibleSquares) {
     n: [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]],
     k: [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]],
   };
-
   function sq(f, r) { return FILES[f] + (r + 1); }
-  function coords(square) {
-    return [FILES.indexOf(square[0]), parseInt(square[1]) - 1];
-  }
 
   for (let rank = 0; rank < 8; rank++) {
     for (let file = 0; file < 8; file++) {
@@ -360,35 +369,21 @@ function buildDests(chess, myColor, visibleSquares) {
       const piece  = chess.get(square);
       if (!piece || piece.color !== color) continue;
       if (!visibleSquares.has(square)) continue;
-
       const targets = [];
-
       if (piece.type === 'p') {
-        // Пішак — своя логіка
-        const dir   = color === 'w' ? 1 : -1;
-        const start = color === 'w' ? 1 : 6;
-
-        // Хід вперед
+        const dir = color === 'w' ? 1 : -1, start = color === 'w' ? 1 : 6;
         const r1 = rank + dir;
         if (r1 >= 0 && r1 < 8) {
           const fwd = sq(file, r1);
           if (!chess.get(fwd)) {
             targets.push(fwd);
-            // Подвійний хід з початкової позиції
-            if (rank === start) {
-              const r2  = rank + dir * 2;
-              const fwd2 = sq(file, r2);
-              if (!chess.get(fwd2)) targets.push(fwd2);
-            }
+            if (rank === start) { const fwd2 = sq(file, rank + dir * 2); if (!chess.get(fwd2)) targets.push(fwd2); }
           }
-          // Взяття по діагоналі
           for (const df of [-1, 1]) {
             const ff = file + df;
             if (ff >= 0 && ff < 8) {
-              const diag = sq(ff, r1);
-              const target = chess.get(diag);
+              const diag = sq(ff, r1), target = chess.get(diag);
               if (target && target.color !== color) targets.push(diag);
-              // En passant (спрощено)
               const ep = chess.fen().split(' ')[3];
               if (ep && ep !== '-' && ep === diag) targets.push(diag);
             }
@@ -396,91 +391,48 @@ function buildDests(chess, myColor, visibleSquares) {
         }
       } else if (piece.type === 'n') {
         for (const [df, dr] of DIRS.n) {
-          const nf = file + df;
-          const nr = rank + dr;
+          const nf = file + df, nr = rank + dr;
           if (nf < 0 || nf > 7 || nr < 0 || nr > 7) continue;
-          const target = chess.get(sq(nf, nr));
-          if (!target || target.color !== color) targets.push(sq(nf, nr));
+          const t = chess.get(sq(nf, nr));
+          if (!t || t.color !== color) targets.push(sq(nf, nr));
         }
       } else if (piece.type === 'k') {
-        // Звичайні ходи короля
         for (const [df, dr] of DIRS.k) {
-          const nf = file + df;
-          const nr = rank + dr;
+          const nf = file + df, nr = rank + dr;
           if (nf < 0 || nf > 7 || nr < 0 || nr > 7) continue;
-          const target = chess.get(sq(nf, nr));
-          if (!target || target.color !== color) targets.push(sq(nf, nr));
+          const t = chess.get(sq(nf, nr));
+          if (!t || t.color !== color) targets.push(sq(nf, nr));
         }
-        // Рокіровка — дозволяємо навіть під шахом
-        const castling = chess.fen().split(' ')[2];
-        const kingRank = color === 'w' ? 0 : 7;
-        if (rank === kingRank && file === 4) {
-          // Коротка (e→g)
-          if (castling.includes(color === 'w' ? 'K' : 'k')
-            && !chess.get(sq(5, kingRank))
-            && !chess.get(sq(6, kingRank))) {
-            targets.push(sq(6, kingRank));
-          }
-          // Довга (e→c)
-          if (castling.includes(color === 'w' ? 'Q' : 'q')
-            && !chess.get(sq(3, kingRank))
-            && !chess.get(sq(2, kingRank))
-            && !chess.get(sq(1, kingRank))) {
-            targets.push(sq(2, kingRank));
-          }
+        const castling = chess.fen().split(' ')[2], kr = color === 'w' ? 0 : 7;
+        if (rank === kr && file === 4) {
+          if (castling.includes(color === 'w' ? 'K' : 'k') && !chess.get(sq(5,kr)) && !chess.get(sq(6,kr))) targets.push(sq(6,kr));
+          if (castling.includes(color === 'w' ? 'Q' : 'q') && !chess.get(sq(3,kr)) && !chess.get(sq(2,kr)) && !chess.get(sq(1,kr))) targets.push(sq(2,kr));
         }
       } else {
-        // Тура, слон, ферзь — sliding pieces
         for (const [df, dr] of DIRS[piece.type]) {
-          let nf = file + df;
-          let nr = rank + dr;
+          let nf = file + df, nr = rank + dr;
           while (nf >= 0 && nf <= 7 && nr >= 0 && nr <= 7) {
-            const target = chess.get(sq(nf, nr));
-            if (target) {
-              if (target.color !== color) targets.push(sq(nf, nr));
-              break; // заблоковано
-            }
-            targets.push(sq(nf, nr));
-            nf += df;
-            nr += dr;
+            const t = chess.get(sq(nf, nr));
+            if (t) { if (t.color !== color) targets.push(sq(nf, nr)); break; }
+            targets.push(sq(nf, nr)); nf += df; nr += dr;
           }
         }
       }
-
       if (targets.length > 0) dests.set(square, targets);
     }
   }
-
   return dests;
 }
+
 function PawnRules() {
   const [open, setOpen] = React.useState(false);
   return (
     <div style={{ marginTop: '8px' }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          background:  'none',
-          border:      'none',
-          color:       'rgba(255,255,255,0.5)',
-          cursor:      'pointer',
-          fontSize:    '11px',
-          letterSpacing: '0.05em',
-          padding:     '0',
-          textDecoration: 'underline',
-          textUnderlineOffset: '3px',
-        }}
-      >
+      <button onClick={() => setOpen(o => !o)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '11px', letterSpacing: '0.05em', padding: '0', textDecoration: 'underline', textUnderlineOffset: '3px' }}>
         {open ? '▾' : '▸'} ♟️ pawn visibility rules
       </button>
       {open && (
-        <div style={{
-          marginTop:  '8px',
-          color:      'rgba(255,255,255,0.45)',
-          fontSize:   '11px',
-          lineHeight: '1.7',
-          textAlign:  'left',
-        }}>
+        <div style={{ marginTop: '8px', color: 'rgba(255,255,255,0.45)', fontSize: '11px', lineHeight: '1.7', textAlign: 'left' }}>
           <p style={{margin:'2px 0'}}>a pawn sees one square forward if empty, and</p>
           <p style={{margin:'2px 0'}}>two from its starting square if both are empty.</p>
           <p style={{margin:'2px 0'}}>if blocked, it cannot move or see beyond.</p>
@@ -499,28 +451,13 @@ function FogPreview() {
       const light = (r + f) % 2 === 0;
       const fog   = r < 4 ? (Math.random() > 0.15) : (Math.random() > 0.75);
       squares.push(
-        <div key={`${r}${f}`} style={{
-          backgroundColor: light ? '#c8c8c8' : '#888',
-          position: 'relative',
-          filter: 'grayscale(1)',
-        }}>
-          {fog && <div style={{
-            position: 'absolute', inset: 0,
-            background: `rgba(8,8,8,${0.7 + Math.random() * 0.25})`,
-          }}/>}
+        <div key={`${r}${f}`} style={{ backgroundColor: light ? '#c8c8c8' : '#888', position: 'relative', filter: 'grayscale(1)' }}>
+          {fog && <div style={{ position: 'absolute', inset: 0, background: `rgba(8,8,8,${0.7 + Math.random() * 0.25})` }}/>}
         </div>
       );
     }
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(8, 1fr)',
-      gridTemplateRows:    'repeat(8, 1fr)',
-      width: 'min(72vw, 220px)',
-      height: 'min(72vw, 220px)',
-      border: '1px solid #222',
-      overflow: 'hidden',
-    }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gridTemplateRows: 'repeat(8, 1fr)', width: 'min(72vw, 220px)', height: 'min(72vw, 220px)', border: '1px solid #222', overflow: 'hidden' }}>
       {squares}
     </div>
   );

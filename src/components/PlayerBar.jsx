@@ -1,24 +1,23 @@
 import styles from './PlayerBar.module.css';
 
-export function PlayerBar({ color, name = 'Player', rating, isActive, capturedPieces = [] }) {
+export function PlayerBar({ color, name = 'Player', isActive, capturedPieces = [] }) {
   return (
     <div className={`${styles.bar} ${isActive ? styles.active : ''}`}>
-      <div className={styles.avatar}>
-        {color === 'white' ? '♔' : '♚'}
-      </div>
-
-      <div className={styles.info}>
-        <span className={styles.name}>{name}</span>
-        {rating && <span className={styles.rating}>{rating}</span>}
-      </div>
-
-      {capturedPieces.length > 0 && (
-        <div className={styles.captured}>
-          {capturedPieces.map((p, i) => (
-            <span key={i} className={styles.capturedPiece}>{p}</span>
-          ))}
+      <div className={styles.left}>
+        <div className={styles.avatar}>
+          {color === 'white' ? '♔' : '♚'}
         </div>
-      )}
+        <span className={styles.name}>{name}</span>
+      </div>
+
+      <div className={styles.captured}>
+        {capturedPieces.length > 0
+          ? capturedPieces.map((p, i) => (
+              <span key={i} className={styles.capturedPiece}>{p}</span>
+            ))
+          : <span className={styles.capturedEmpty} />
+        }
+      </div>
 
       {isActive && (
         <div className={styles.turnIndicator}>
