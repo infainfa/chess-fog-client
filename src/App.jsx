@@ -7,8 +7,8 @@ import { getVisibleSquares } from './lib/fogEngine.js';
 import styles from './App.module.css';
 
 const PIECE_SYMBOLS = {
-  w: { p:'♙', n:'♘', b:'♗', r:'♖', q:'♕', k:'♔' },
-  b: { p:'♙', n:'♘', b:'♗', r:'♖', q:'♕', k:'♔' },
+  w: { p:'♙', n:'♘', b:'♗', r:'♖', q:'♕', k:'♔' },  // white = outline
+  b: { p:'♟', n:'♞', b:'♝', r:'♜', q:'♛', k:'♚' },  // black = filled
 };
 
 const EMPTY_STATE = {
@@ -215,9 +215,9 @@ export default function App() {
   const oppC     = myColor === 'white' ? 'b' : 'w';
 
   const captured    = myColor ? computeCaptured(movesRef.current) : { w: [], b: [] };
-  // My bar (bottom): shows pieces I captured from opponent
+  // My bar (bottom): shows pieces I captured — use OPPONENT color symbols
   const myCaptured  = captured[oppC].map(t => PIECE_SYMBOLS[oppC][t]);
-  // Opponent bar (top): shows pieces opponent captured from me
+  // Opponent bar (top): shows pieces they captured — use MY color symbols
   const oppCaptured = captured[myC].map(t => PIECE_SYMBOLS[myC][t]);
 
   const noFog     = !fogEnabled;
