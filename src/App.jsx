@@ -219,11 +219,8 @@ export default function App() {
   const myC      = myColor === 'white' ? 'w' : 'b';
   const oppC     = myColor === 'white' ? 'b' : 'w';
 
-  const captured    = myColor ? computeCaptured(movesRef.current) : { w: [], b: [] };
-  // My bar: pieces I captured from opponent (show in opponent's color)
-  const myCaptured  = captured[oppC].map(t => capturedSymbol(t, oppC));
-  // Opp bar: pieces opponent captured from me (show in my color)
-  const oppCaptured = captured[myC].map(t => capturedSymbol(t, myC));
+  const myCaptured  = game.capturedByMe  || [];
+  const oppCaptured = game.capturedByOpp || [];
 
   const noFog     = !fogEnabled;
   const viewColor = flipped ? oppColor : myColor;
