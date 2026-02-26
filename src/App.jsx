@@ -6,33 +6,20 @@ import { useSocket }     from './hooks/useSocket.js';
 import { getVisibleSquares } from './lib/fogEngine.js';
 import styles from './App.module.css';
 
-// Використовуємо тільки контурні символи + variation selector ︎ щоб заборонити emoji
-const PIECE_CHARS = { p:'♙︎', n:'♘︎', b:'♗︎', r:'♖︎', q:'♕︎', k:'♔︎' };
-// color = 'w' або 'b' — для CSS забарвлення
+// Мініатюра фігури через той самий cburnett спрайт що й на дошці
 function capturedSymbol(type, color) {
-  return { char: PIECE_CHARS[type], color };
+  return { type, color };
 }
 
 const EMPTY_STATE = {
   gameId: null, myColor: null, turnColor: 'white',
   pieces: null, visibleSquares: null, fogSquares: null,
   dests: new Map(), lastMove: null, gameOver: null,
+  capturedByMe: [], capturedByOpp: [],
 };
 
-function computeCaptured(moves) {
-  const chess = new Chess();
-  const captured = { w: [], b: [] };
-  for (const m of moves) {
-    try {
-      const move = chess.move({ from: m.from, to: m.to, promotion: m.promotion || 'q' });
-      if (move?.captured) {
-        const owner = move.color === 'w' ? 'b' : 'w';
-        captured[owner].push(move.captured);
-      }
-    } catch {}
-  }
-  return captured;
-}
+// Збиті фігури відстежуємо через сервер (надходять в move_made)
+// captured = { w: ['p','n',...], b: ['q',...] } — pieces taken FROM that color
 
 function forceChessMove(chess, from, to, promotion) {
   try {
@@ -174,7 +161,23 @@ export default function App() {
         ? { winner, reason: isCheckmate ? 'checkmate' : isStalemate ? 'stalemate' : 'unknown' }
         : null;
 
-      const newState = { ...prev, turnColor: turn, pieces, visibleSquares: visible, fogSquares: fog, dests, lastMove: move, gameOver };
+      // Відстежуємо збиті фігури (move.captured надходить з сервера)
+      let capturedByMe  = [...(prev.capturedByMe  || [])];
+      let capturedByOpp = [...(prev.capturedByOpp || [])];
+      if (move.captured) {
+        const myC2  = myColor === 'white' ? 'w' : 'b';
+        const oppC2 = myColor === 'white' ? 'b' : 'w';
+        const wasMyTurn = prev.turnColor === myColor;
+        if (wasMyTurn) {
+          // Я збив фігуру суперника — показую в себе кольором суперника
+          capturedByMe.push({ type: move.captured, color: oppC2 });
+        } else {
+          // Суперник збив мою фігуру — показую у суперника кольором моїх фігур
+          capturedByOpp.push({ type: move.captured, color: myC2 });
+        }
+      }
+
+      const newState = { ...prev, turnColor: turn, pieces, visibleSquares: visible, fogSquares: fog, dests, lastMove: move, gameOver, capturedByMe, capturedByOpp };
       gameRef.current = newState;
       setGame(newState);
       setPlyIndex(movesRef.current.length);
