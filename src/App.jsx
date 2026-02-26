@@ -8,7 +8,7 @@ import styles from './App.module.css';
 
 const PIECE_SYMBOLS = {
   w: { p:'♙', n:'♘', b:'♗', r:'♖', q:'♕', k:'♔' },
-  b: { p:'♟', n:'♞', b:'♝', r:'♜', q:'♛', k:'♚' },
+  b: { p:'♙', n:'♘', b:'♗', r:'♖', q:'♕', k:'♔' },
 };
 
 const EMPTY_STATE = {
@@ -215,8 +215,10 @@ export default function App() {
   const oppC     = myColor === 'white' ? 'b' : 'w';
 
   const captured    = myColor ? computeCaptured(movesRef.current) : { w: [], b: [] };
-  const oppCaptured = captured[oppC].map(t => PIECE_SYMBOLS[oppC][t]);
-  const myCaptured  = captured[myC].map(t => PIECE_SYMBOLS[myC][t]);
+  // My bar (bottom): shows pieces I captured from opponent
+  const myCaptured  = captured[oppC].map(t => PIECE_SYMBOLS[oppC][t]);
+  // Opponent bar (top): shows pieces opponent captured from me
+  const oppCaptured = captured[myC].map(t => PIECE_SYMBOLS[myC][t]);
 
   const noFog     = !fogEnabled;
   const viewColor = flipped ? oppColor : myColor;
