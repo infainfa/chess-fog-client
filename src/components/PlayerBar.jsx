@@ -11,12 +11,15 @@ export function PlayerBar({ color, name = 'Player', isActive, capturedPieces = [
       </div>
 
       <div className={styles.captured}>
-        {capturedPieces.length > 0
-          ? capturedPieces.map((p, i) => (
-              <span key={i} className={styles.capturedPiece}>{p}</span>
-            ))
-          : <span className={styles.capturedEmpty} />
-        }
+        {capturedPieces.map((p, i) => (
+          <span
+            key={i}
+            className={styles.capturedPiece}
+            style={{ color: p.color === 'w' ? '#e8e8e8' : '#222' }}
+          >
+            {p.char}
+          </span>
+        ))}
       </div>
 
       {isActive && (

@@ -6,10 +6,12 @@ import { useSocket }     from './hooks/useSocket.js';
 import { getVisibleSquares } from './lib/fogEngine.js';
 import styles from './App.module.css';
 
-const PIECE_SYMBOLS = {
-  w: { p:'♙', n:'♘', b:'♗', r:'♖', q:'♕', k:'♔' },  // white = outline
-  b: { p:'♟', n:'♞', b:'♝', r:'♜', q:'♛', k:'♚' },  // black = filled
-};
+// Використовуємо тільки контурні символи + variation selector ︎ щоб заборонити emoji
+const PIECE_CHARS = { p:'♙︎', n:'♘︎', b:'♗︎', r:'♖︎', q:'♕︎', k:'♔︎' };
+// color = 'w' або 'b' — для CSS забарвлення
+function capturedSymbol(type, color) {
+  return { char: PIECE_CHARS[type], color };
+}
 
 const EMPTY_STATE = {
   gameId: null, myColor: null, turnColor: 'white',
@@ -215,10 +217,10 @@ export default function App() {
   const oppC     = myColor === 'white' ? 'b' : 'w';
 
   const captured    = myColor ? computeCaptured(movesRef.current) : { w: [], b: [] };
-  // My bar (bottom): shows pieces I captured — use OPPONENT color symbols
-  const myCaptured  = captured[oppC].map(t => PIECE_SYMBOLS[oppC][t]);
-  // Opponent bar (top): shows pieces they captured — use MY color symbols
-  const oppCaptured = captured[myC].map(t => PIECE_SYMBOLS[myC][t]);
+  // My bar: pieces I captured from opponent (show in opponent's color)
+  const myCaptured  = captured[oppC].map(t => capturedSymbol(t, oppC));
+  // Opp bar: pieces opponent captured from me (show in my color)
+  const oppCaptured = captured[myC].map(t => capturedSymbol(t, myC));
 
   const noFog     = !fogEnabled;
   const viewColor = flipped ? oppColor : myColor;
