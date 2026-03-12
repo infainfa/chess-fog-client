@@ -9,8 +9,8 @@ const FILES_BLACK = ['h','g','f','e','d','c','b','a'];
 
 export function ChessBoard({
   pieces,
-  visibleSquares,
-  myColor = 'white',
+  fogSquares,
+  orientation = 'white',
   turnColor = 'white',
   dests,
   lastMove,
@@ -25,21 +25,20 @@ export function ChessBoard({
     updateBoard({
       pieces,
       turnColor: turnColor || 'white',
-      myColor,
+      myColor: orientation,
       dests:     dests || new Map(),
       lastMove:  lastMove ? [lastMove.from, lastMove.to] : undefined,
     });
-  }, [pieces, turnColor, myColor, dests, lastMove, updateBoard]);
+  }, [pieces, turnColor, orientation, dests, lastMove, updateBoard]);
 
-  const ranks = myColor === 'white' ? RANKS_WHITE : RANKS_BLACK;
-  const files = myColor === 'white' ? FILES_WHITE : FILES_BLACK;
+  const ranks = orientation === 'white' ? RANKS_WHITE : RANKS_BLACK;
+  const files = orientation === 'white' ? FILES_WHITE : FILES_BLACK;
 
   return (
     <div style={{
       position:   'relative',
       display:    'inline-flex',
       flexShrink: 0,
-      // Загальний розмір = дошка + місце для координат
     }}>
 
       {/* Цифри зліва (ranks) */}
@@ -48,7 +47,7 @@ export function ChessBoard({
         flexDirection:  'column',
         justifyContent: 'space-around',
         width:          '16px',
-        paddingBottom:  '16px', // щоб вирівняти з буквами знизу
+        paddingBottom:  '16px',
         flexShrink:     0,
       }}>
         {ranks.map(r => (
@@ -86,7 +85,7 @@ export function ChessBoard({
               height:   '100%',
             }}
           />
-          <FogOverlay fogSquares={visibleSquares} orientation={myColor} />
+          <FogOverlay fogSquares={fogSquares} orientation={orientation} />
         </div>
 
         {/* Букви знизу (files) */}
