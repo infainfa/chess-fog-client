@@ -82,22 +82,91 @@ function buildFogSquares(board, visibleSquares, myColor, noFog = false) {
   return fog;
 }
 
-function buildDests(chess, myColor, visibleSquares) {
+function buildDests(chess, myColor) {
   const dests = new Map();
   const myC   = myColor === 'white' ? 'w' : 'b';
+  const FILES = 'abcdefgh';
+  const DIRS  = {
+    r: [[1,0],[-1,0],[0,1],[0,-1]],
+    b: [[1,1],[1,-1],[-1,1],[-1,-1]],
+    q: [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]],
+    n: [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]],
+    k: [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]],
+  };
+
   const board = chess.board();
-  board.forEach((row, ri) => {
-    row.forEach((sq, ci) => {
-      if (!sq || sq.color !== myC) return;
-      const file = String.fromCharCode(97 + ci);
-      const rank = 8 - ri;
-      const from = `${file}${rank}`;
-      const moves = chess.moves({ square: from, verbose: true });
-      if (moves.length) {
-        dests.set(from, moves.map(m => m.to));
+  const fen   = chess.fen().split(' ');
+  const castling = fen[2];
+  const epSquare = fen[3];
+
+  for (let rank = 0; rank < 8; rank++) {
+    for (let file = 0; file < 8; file++) {
+      const piece = board[rank][file];
+      if (!piece || piece.color !== myC) continue;
+
+      const from  = FILES[file] + (8 - rank);
+      const moves = [];
+
+      if (piece.type === 'p') {
+        const dir   = myC === 'w' ? -1 : 1;
+        const start = myC === 'w' ? 6 : 1;
+        const r1    = rank + dir;
+        if (r1 >= 0 && r1 < 8) {
+          if (!board[r1][file]) {
+            moves.push(FILES[file] + (8 - r1));
+            const r2 = rank + dir * 2;
+            if (rank === start && r2 >= 0 && r2 < 8 && !board[r2][file])
+              moves.push(FILES[file] + (8 - r2));
+          }
+          for (const df of [-1, 1]) {
+            const ff = file + df;
+            if (ff >= 0 && ff < 8) {
+              const diag = FILES[ff] + (8 - r1);
+              const target = board[r1][ff];
+              if ((target && target.color !== myC) || epSquare === diag)
+                moves.push(diag);
+            }
+          }
+        }
+      } else if (piece.type === 'k') {
+        for (const [df, dr] of DIRS.k) {
+          const nf = file + df, nr = rank + dr;
+          if (nf < 0 || nf > 7 || nr < 0 || nr > 7) continue;
+          const t = board[nr][nf];
+          if (!t || t.color !== myC) moves.push(FILES[nf] + (8 - nr));
+        }
+        // Рокіровка
+        const kr = myC === 'w' ? 7 : 0;
+        if (rank === kr && file === 4) {
+          if (castling.includes(myC === 'w' ? 'K' : 'k')
+            && !board[kr][5] && !board[kr][6])
+            moves.push(FILES[6] + (8 - kr));
+          if (castling.includes(myC === 'w' ? 'Q' : 'q')
+            && !board[kr][3] && !board[kr][2] && !board[kr][1])
+            moves.push(FILES[2] + (8 - kr));
+        }
+      } else if (piece.type === 'n') {
+        for (const [df, dr] of DIRS.n) {
+          const nf = file + df, nr = rank + dr;
+          if (nf < 0 || nf > 7 || nr < 0 || nr > 7) continue;
+          const t = board[nr][nf];
+          if (!t || t.color !== myC) moves.push(FILES[nf] + (8 - nr));
+        }
+      } else {
+        for (const [df, dr] of DIRS[piece.type]) {
+          let nf = file + df, nr = rank + dr;
+          while (nf >= 0 && nf <= 7 && nr >= 0 && nr <= 7) {
+            const t = board[nr][nf];
+            if (t) { if (t.color !== myC) moves.push(FILES[nf] + (8 - nr)); break; }
+            moves.push(FILES[nf] + (8 - nr));
+            nf += df; nr += dr;
+          }
+        }
       }
-    });
-  });
+
+      if (moves.length) dests.set(from, moves);
+    }
+  }
   return dests;
 }
 
