@@ -17,7 +17,7 @@ const EMPTY_STATE = {
   gameId: null, myColor: null, turnColor: 'white',
   pieces: null, visibleSquares: null, fogSquares: null,
   dests: new Map(), lastMove: null, gameOver: null,
-  capturedByMe: [], capturedByOpp: [],
+  capturedByMe: [], capturedByOpp: [], fullBoard: null,
 };
 
 // Збиті фігури відстежуємо через сервер (надходять в move_made)
@@ -269,7 +269,7 @@ export default function App() {
       setScreen('playing');
     },
 
-    onMoveMade({ move, fen, turn, board, visibleSquares, isGameOver, isCheckmate, isStalemate, winner }) {
+    onMoveMade({ move, fen, turn, board, visibleSquares, isGameOver, isCheckmate, isStalemate, winner, fullBoard }) {
       movesRef.current = [...movesRef.current, move];
 
       setGame(prev => {
@@ -278,7 +278,8 @@ export default function App() {
         try { chess = new Chess(fen); } catch { chess = null; }
         const visible  = new Set(visibleSquares);
         const pieces = buildPiecesWithFog(board, visible, myColor);
-const fog    = buildFogSquares(board, visible, myColor);
+        const fog    = buildFogSquares(board, visible, myColor);
+        const savedFullBoard = fullBoard || prev.fullBoard;
         const dests  = (!isGameOver && chess && turn === myColor) ? buildDests(chess, myColor, visible) : new Map();
         const gameOver = isGameOver
           ? { winner, reason: isCheckmate ? 'checkmate' : isStalemate ? 'stalemate' : 'unknown' }
@@ -298,7 +299,7 @@ const fog    = buildFogSquares(board, visible, myColor);
           }
         }
 
-        const newState = { ...prev, turnColor: turn, pieces, visibleSquares: visible, fogSquares: fog, dests, lastMove: move, gameOver, capturedByMe, capturedByOpp };
+        const newState = { ...prev, turnColor: turn, pieces, visibleSquares: visible, fogSquares: fog, dests, lastMove: move, gameOver, fullBoard: savedFullBoard, capturedByMe, capturedByOpp };
         gameRef.current = newState;
         return newState;
       });
