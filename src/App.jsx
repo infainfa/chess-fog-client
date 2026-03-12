@@ -357,13 +357,14 @@ const fog    = buildFogSquares(board, visible, myColor);
   let displayPieces, displayFog, displayLastMove, displayTurn;
   if (myColor) {
     if (isLive) {
-  displayPieces   = noFog
-    ? (() => {
-        const chess2 = rebuildPosition(game.startFen, movesRef.current, movesRef.current.length);
-        return buildPiecesWithFog(chess2.board(), null, myColor, true);
-      })()
-    : game.pieces;
-  displayFog      = noFog ? new Set() : game.fogSquares;
+  if (noFog) {
+    // Показуємо всі фігури які є в game.pieces але ігноруємо туман
+    displayPieces   = game.pieces;
+    displayFog      = new Set();
+  } else {
+    displayPieces   = game.pieces;
+    displayFog      = game.fogSquares;
+  }
   displayLastMove = game.lastMove;
   displayTurn     = game.turnColor;
     } else {
