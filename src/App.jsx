@@ -357,12 +357,15 @@ const fog    = buildFogSquares(board, visible, myColor);
   let displayPieces, displayFog, displayLastMove, displayTurn;
   if (myColor) {
     if (isLive) {
-      displayPieces   = noFog
-        ? (() => { const c = new Chess(game.startFen); rebuildPosition(game.startFen, movesRef.current, movesRef.current.length); const chess2 = rebuildPosition(game.startFen, movesRef.current, movesRef.current.length); return buildPiecesWithFog(chess2.board(), game.visibleSquares, myColor, true); })()
-        : game.pieces;
-      displayFog      = noFog ? new Set() : game.fogSquares;
-      displayLastMove = game.lastMove;
-      displayTurn     = game.turnColor;
+  displayPieces   = noFog
+    ? (() => {
+        const chess2 = rebuildPosition(game.startFen, movesRef.current, movesRef.current.length);
+        return buildPiecesWithFog(chess2.board(), null, myColor, true);
+      })()
+    : game.pieces;
+  displayFog      = noFog ? new Set() : game.fogSquares;
+  displayLastMove = game.lastMove;
+  displayTurn     = game.turnColor;
     } else {
       const r = (() => {
         const chess2 = rebuildPosition(game.startFen, movesRef.current, plyIndex);
