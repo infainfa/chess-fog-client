@@ -172,7 +172,7 @@ export default function App() {
       setScreen('waiting');
     },
 
-    onGameStart({ gameId, color, board, visibleSquares, turn, fen }) {
+    onGameStart({ gameId, color, board, visibleSquares, turn, fen }) {console.log('[gameStart] color:', color, 'visible:', visibleSquares?.length, 'board:', !!board);
       const chess    = new Chess(fen || undefined);
       const myColor  = color;
       const visible  = new Set(visibleSquares);
