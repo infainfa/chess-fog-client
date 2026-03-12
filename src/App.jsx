@@ -47,6 +47,7 @@ function rebuildPosition(startFen, moves, k) {
 }
 
 function buildPiecesWithFog(board, visibleSquares, myColor, noFog = false) {
+  if (!board) return new Map();
   const pieces = new Map();
   const ROLES = { p:'pawn', n:'knight', b:'bishop', r:'rook', q:'queen', k:'king' };
   const myC = myColor === 'white' ? 'w' : 'b';
@@ -66,6 +67,7 @@ function buildPiecesWithFog(board, visibleSquares, myColor, noFog = false) {
 }
 
 function buildFogSquares(board, visibleSquares, myColor, noFog = false) {
+  if (!board) return new Set();
   if (noFog) return new Set();
   const fog = new Set();
   const myC = myColor === 'white' ? 'w' : 'b';
