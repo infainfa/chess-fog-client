@@ -276,8 +276,8 @@ export default function App() {
         const myColor  = prev.myColor;
         const chess    = new Chess(fen);
         const visible  = new Set(visibleSquares);
-        const pieces   = buildPiecesWithFog(board, visible, myColor);
-        const fog      = buildFogSquares(board, visible, myColor);
+        const pieces = buildPiecesWithFog(board, visible, myColor, !!isGameOver);
+        const fog    = isGameOver ? new Set() : buildFogSquares(board, visible, myColor);
         const dests    = turn === myColor ? buildDests(chess, myColor, visible) : new Map();
         const gameOver = isGameOver
           ? { winner, reason: isCheckmate ? 'checkmate' : isStalemate ? 'stalemate' : 'unknown' }
