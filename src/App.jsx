@@ -277,8 +277,8 @@ export default function App() {
         let chess;
         try { chess = new Chess(fen); } catch { chess = null; }
         const visible  = new Set(visibleSquares);
-        const pieces = buildPiecesWithFog(board, visible, myColor, !!isGameOver);
-        const fog    = isGameOver ? new Set() : buildFogSquares(board, visible, myColor);
+        const pieces = buildPiecesWithFog(board, visible, myColor);
+const fog    = buildFogSquares(board, visible, myColor);
         const dests  = (!isGameOver && chess && turn === myColor) ? buildDests(chess, myColor, visible) : new Map();
         const gameOver = isGameOver
           ? { winner, reason: isCheckmate ? 'checkmate' : isStalemate ? 'stalemate' : 'unknown' }
