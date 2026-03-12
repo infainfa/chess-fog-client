@@ -9,11 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "chessground": "^9.1.1",
+    "@supabase/supabase-js": "^2.99.1",
     "chess.js": "^1.3.0",
-    "socket.io-client": "^4.7.5",
+    "chessground": "^9.1.1",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "socket.io-client": "^4.7.5"
   },
   "devDependencies": {
     "@types/react": "^18.3.1",
