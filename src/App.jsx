@@ -493,7 +493,10 @@ export default function App() {
                    game.gameOver.winner === null    ? 'Draw'       : 'You Lost'}
                 </p>
               )}
-              <button className={styles.dispelBtn} onClick={() => setFogEnabled(f => !f)}>
+              <button className={styles.dispelBtn} onClick={() => {
+                  console.log('[DISPEL] fogEnabled:', fogEnabled, 'fullBoard:', game.fullBoard);
+                  setFogEnabled(f => !f);
+                }}>
                 {fogEnabled ? '☁️ Dispel the Fog' : '🌫️ Restore Fog'}
               </button>
               <button className={styles.flipBtn} onClick={() => setFlipped(f => !f)}>
