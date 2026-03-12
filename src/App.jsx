@@ -114,12 +114,16 @@ const FOG_PREVIEW_SQUARES = [
 ];
 
 function FogPreview() {
+  const squares = useRef(
+    Array.from({ length: 64 }, () => Math.random() > 0.45)
+  );
+
   return (
     <div style={{ display:'grid', gridTemplateColumns:'repeat(8,28px)', gap:0, border:'1px solid #333' }}>
-      {FOG_PREVIEW_SQUARES.flat().map((cls, i) => (
+      {squares.current.map((isFog, i) => (
         <div key={i} style={{
           width:28, height:28,
-          background: cls === 'fog'
+          background: isFog
             ? 'rgba(10,10,10,0.82)'
             : ((Math.floor(i/8) + i%8) % 2 === 0 ? '#b0b0b0' : '#6e6e6e'),
         }}/>
