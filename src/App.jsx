@@ -358,28 +358,33 @@ export default function App() {
   let displayPieces, displayFog, displayLastMove, displayTurn;
   if (myColor) {
     if (isLive) {
+      // isLive = фінальна позиція гри
       if (noFog && game.fullBoard) {
+        // Dispel fog — показуємо всі фігури з повного board
         displayPieces   = buildPiecesWithFog(game.fullBoard, null, myColor, true);
         displayFog      = new Set();
       } else {
+        // Звичайний режим з туманом
         displayPieces   = game.pieces;
         displayFog      = game.fogSquares;
       }
       displayLastMove = game.lastMove;
       displayTurn     = game.turnColor;
     } else {
-      const r = (() => {
-        const chess2 = rebuildPosition(game.startFen, movesRef.current, plyIndex);
-        const visible = getVisibleSquares(chess2.board(), myColor === 'white' ? 'w' : 'b');
-        return {
-          pieces:    buildPiecesWithFog(chess2.board(), visible, myColor, noFog),
-          fogSquares: noFog ? new Set() : buildFogSquares(chess2.board(), visible, myColor),
-          lastMove:  plyIndex > 0 ? movesRef.current[plyIndex - 1] : null,
-        };
-      })();
-      displayPieces   = r.pieces;
-      displayFog      = r.fogSquares;
-      displayLastMove = r.lastMove;
+      // Перегляд ходів — перебудовуємо позицію
+      const chess2  = rebuildPosition(game.startFen, movesRef.current, plyIndex);
+      let board2; try { board2 = chess2.board(); } catch { board2 = null; }
+      if (board2) {
+        const visible2 = getVisibleSquares(board2, myColor === 'white' ? 'w' : 'b');
+        // При noFog в перегляді — показуємо всі фігури БЕЗ туману
+        // але тільки ті які були на дошці (обидві сторони через noFog=true)
+        displayPieces   = buildPiecesWithFog(board2, visible2, myColor, noFog);
+        displayFog      = noFog ? new Set() : buildFogSquares(board2, visible2, myColor);
+      } else {
+        displayPieces   = game.pieces;
+        displayFog      = new Set();
+      }
+      displayLastMove = plyIndex > 0 ? movesRef.current[plyIndex - 1] : null;
       displayTurn     = null;
     }
   }
